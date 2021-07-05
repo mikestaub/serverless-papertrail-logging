@@ -20,8 +20,6 @@ class PapertrailLogging {
     if (!_.has(this.service, 'custom.papertrail.port')) {
       throw new this.serverless.classes.Error('Configure Papertrail port in custom.papertrail.port of the serverless.yml');
     }
-
-    this.papertrailHost = _.get(this.service, 'custom.papertrail.host', 'logs.papertrailapp.com');
   }
 
   static getFunctionName() {
@@ -40,6 +38,8 @@ class PapertrailLogging {
       fs.mkdirSync(functionPath);
     }
 
+    this.papertrailHost = _.get(this.service, 'custom.papertrail.host', 'logs.papertrailapp.com');
+
     const loggerFunctionFullName = `${this.service.service}-${this.service.provider.stage}-${PapertrailLogging.getFunctionName()}`;
     _.merge(
       this.service.provider.compiledCloudFormationTemplate.Resources,
@@ -56,11 +56,14 @@ class PapertrailLogging {
     let templatePath = path.resolve(__dirname, './logger.handler.js');
     let templateFile = fs.readFileSync(templatePath, 'utf-8');
 
+    const papertrailHostname = _.get(this.service, 'custom.papertrail.hostname', this.service.service);
+    const papertrailProgram = _.get(this.service, 'custom.papertrail.program', this.service.provider.stage);
+
     let handlerFunction = templateFile
       .replace('%papertrailHost%', this.papertrailHost)
       .replace('%papertrailPort%', this.service.custom.papertrail.port)
-      .replace('%papertrailHostname%', this.service.service)
-      .replace('%papertrailProgram%', this.service.provider.stage);
+      .replace('%papertrailHostname%', papertrailHostname)
+      .replace('%papertrailProgram%', papertrailProgram);
     fs.writeFileSync(path.join(functionPath, 'handler.js'), handlerFunction);
     this.service.functions[PapertrailLogging.getFunctionName()] = {
       handler: `${PapertrailLogging.getFunctionName()}/handler.handler`,
